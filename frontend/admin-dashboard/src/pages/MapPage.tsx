@@ -1,44 +1,26 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Box, AppBar, Toolbar, Typography, IconButton, Drawer, List, ListItem, ListItemIcon,
-  ListItemText, Divider, Chip, Card, CardContent, Button, TextField, MenuItem, Collapse,
+  Box, Typography, Card, CardContent, Button, TextField, MenuItem, Skeleton,
 } from '@mui/material';
-import {
-  Map as MapIcon, Warning as WarningIcon, Dashboard as DashboardIcon,
-  Report as ReportIcon, Logout as LogoutIcon, ExpandMore as ExpandMoreIcon,
-  FilterList as FilterIcon, MyLocation as LocationIcon,
-} from '@mui/icons-material';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents, GeoJSON } from 'react-leaflet';
-import { getRiskZones, getNERRiskGrid, getMLPrediction, getActiveAlerts } from '../services/api';
+import Layout from '../components/Layout';
+import { getRiskZones, getNERRiskGrid, getMLPrediction } from '../services/api';
 import 'leaflet/dist/leaflet.css';
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', path: '/', icon: <DashboardIcon /> },
-  { label: 'Risk Map', path: '/map', icon: <MapIcon /> },
-  { label: 'Alerts', path: '/alerts', icon: <WarningIcon /> },
-  { label: 'Field Reports', path: '/reports', icon: <ReportIcon /> },
-];
-
 const RISK_COLORS: Record<string, string> = {
-  low: '#4caf50',
-  moderate: '#ff9800',
-  high: '#f44336',
-  very_high: '#d32f2f',
-  critical: '#9c27b0',
+  low: '#4caf50', moderate: '#ff9800', high: '#f44336',
+  very_high: '#d32f2f', critical: '#9c27b0',
 };
 
 const NER_CENTER: [number, number] = [25.5, 93.0];
 const NER_ZOOM = 7;
 
-// Map click handler for point prediction
 const MapClickHandler: React.FC<{ onPredict: (lat: number, lng: number) => void }> = ({ onPredict }) => {
   useMapEvents({ click: (e) => { onPredict(e.latlng.lat, e.latlng.lng); } });
   return null;
 };
 
 const MapPage: React.FC = () => {
-  const navigate = useNavigate();
   const [riskGrid, setRiskGrid] = useState<any[]>([]);
   const [riskZones, setRiskZones] = useState<any>(null);
   const [selectedPoint, setSelectedPoint] = useState<any>(null);
@@ -48,16 +30,11 @@ const MapPage: React.FC = () => {
   const [filterLevel, setFilterLevel] = useState('all');
   const [predicting, setPredicting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      const [gridData, zonesData] = await Promise.allSettled([
-        getNERRiskGrid(),
-        getRiskZones(),
-      ]);
+      const [gridData, zonesData] = await Promise.allSettled([getNERRiskGrid(), getRiskZones()]);
       if (gridData.status === 'fulfilled') setRiskGrid(gridData.value.grid || []);
       if (zonesData.status === 'fulfilled') setRiskZones(zonesData.value);
     } catch (e) { console.error(e); }
@@ -67,113 +44,20 @@ const MapPage: React.FC = () => {
   const handleMapClick = useCallback(async (lat: number, lng: number) => {
     setPredicting(true);
     try {
-      const prediction = await getMLPrediction(lat, lng, {
-        slope: 25,
-        rainfall_24hr: 30,
-        ndvi: 0.5,
-      });
-      setSelectedPoint({
-        lat, lng,
-        ...prediction,
-      });
+      const prediction = await getMLPrediction(lat, lng, { slope: 25, rainfall_24hr: 30, ndvi: 0.5 });
+      setSelectedPoint({ lat, lng, ...prediction });
     } catch (e) {
-      setSelectedPoint({
-        lat, lng,
-        risk_score: 50,
-        risk_level: 'moderate',
-        confidence: 0.5,
-        source: 'offline',
-      });
+      setSelectedPoint({ lat, lng, risk_score: 50, risk_level: 'moderate', confidence: 0.5, source: 'offline' });
     }
     setPredicting(false);
   }, []);
 
-  const filteredGrid = filterLevel === 'all'
-    ? riskGrid
-    : riskGrid.filter(p => p.risk_level === filterLevel);
-
-  const getMarkerRadius = (level: string) => {
-    const sizes: Record<string, number> = { low: 6, moderate: 8, high: 10, very_high: 12, critical: 15 };
-    return sizes[level] || 8;
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('lrn_token');
-    navigate('/login');
-  };
+  const filteredGrid = filterLevel === 'all' ? riskGrid : riskGrid.filter(p => p.risk_level === filterLevel);
+  const getMarkerRadius = (level: string) => ({ low: 6, moderate: 8, high: 10, very_high: 12, critical: 15 }[level] || 8);
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'background.default' }}>
-      {/* Sidebar */}
-      <Drawer variant="permanent" sx={{
-        width: 220, flexShrink: 0,
-        '& .MuiDrawer-paper': { width: 220, bgcolor: '#111827', borderRight: '1px solid #1f2937' },
-      }}>
-        <Box sx={{ p: 2 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ color: '#ff6f00' }}>🏔️ LRM</Typography>
-          <Typography variant="caption" color="text.secondary">Landslide Risk Monitor</Typography>
-        </Box>
-        <Divider sx={{ borderColor: '#1f2937' }} />
-        <List>
-          {NAV_ITEMS.map((item) => (
-            <ListItem key={item.path} onClick={() => navigate(item.path)} sx={{
-              cursor: 'pointer', borderRadius: 1, mx: 1, mb: 0.5,
-              bgcolor: window.location.pathname === item.path ? '#1f2937' : 'transparent',
-              '&:hover': { bgcolor: '#1f2937' },
-            }}>
-              <ListItemIcon sx={{ color: '#9ca3af', minWidth: 36 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 14, color: '#d1d5db' }} />
-            </ListItem>
-          ))}
-        </List>
-        <Divider sx={{ borderColor: '#1f2937', my: 1 }} />
-
-        {/* Map Controls */}
-        <Box sx={{ px: 2 }}>
-          <Typography variant="caption" color="text.secondary" fontWeight={600}>LAYERS</Typography>
-          <Box sx={{ mt: 1 }}>
-            <Button
-              size="small" fullWidth
-              variant={showGrid ? 'contained' : 'outlined'}
-              onClick={() => setShowGrid(!showGrid)}
-              sx={{ mb: 1, fontSize: 12, bgcolor: showGrid ? '#ff6f00' : 'transparent', borderColor: '#ff6f00', color: showGrid ? 'white' : '#ff6f00' }}
-            >
-              Risk Grid
-            </Button>
-            <Button
-              size="small" fullWidth
-              variant={showZones ? 'contained' : 'outlined'}
-              onClick={() => setShowZones(!showZones)}
-              sx={{ mb: 1, fontSize: 12, bgcolor: showZones ? '#1b5e20' : 'transparent', borderColor: '#1b5e20', color: showZones ? 'white' : '#1b5e20' }}
-            >
-              Risk Zones
-            </Button>
-          </Box>
-
-          <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mt: 2, display: 'block' }}>FILTER</Typography>
-          <TextField
-            select fullWidth size="small" value={filterLevel}
-            onChange={e => setFilterLevel(e.target.value)}
-            sx={{ mt: 1, '& .MuiInputBase-root': { fontSize: 12 } }}
-          >
-            <MenuItem value="all">All Levels</MenuItem>
-            {Object.keys(RISK_COLORS).map(level => (
-              <MenuItem key={level} value={level} sx={{ textTransform: 'capitalize' }}>{level.replace('_', ' ')}</MenuItem>
-            ))}
-          </TextField>
-        </Box>
-
-        <Box sx={{ flexGrow: 1 }} />
-        <List>
-          <ListItem onClick={handleLogout} sx={{ cursor: 'pointer', borderRadius: 1, mx: 1, mb: 1, '&:hover': { bgcolor: '#1f2937' } }}>
-            <ListItemIcon sx={{ color: '#9ca3af', minWidth: 36 }}><LogoutIcon /></ListItemIcon>
-            <ListItemText primary="Logout" primaryTypographyProps={{ fontSize: 14, color: '#d1d5db' }} />
-          </ListItem>
-        </List>
-      </Drawer>
-
-      {/* Map */}
-      <Box sx={{ flexGrow: 1, position: 'relative' }}>
+    <Layout>
+      <Box sx={{ height: '100vh', position: 'relative' }}>
         <MapContainer center={NER_CENTER} zoom={NER_ZOOM} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
@@ -181,7 +65,6 @@ const MapPage: React.FC = () => {
           />
           <MapClickHandler onPredict={handleMapClick} />
 
-          {/* Risk Grid Heatmap Points */}
           {showGrid && filteredGrid.map((point, i) => (
             <CircleMarker
               key={`grid-${i}`}
@@ -204,20 +87,46 @@ const MapPage: React.FC = () => {
             </CircleMarker>
           ))}
 
-          {/* Risk Zones GeoJSON */}
           {showZones && riskZones?.geojson && (
             <GeoJSON
               data={riskZones.geojson}
               style={(feature) => ({
                 fillColor: RISK_COLORS[feature?.properties?.riskLevel] || '#666',
-                weight: 2,
-                opacity: 1,
+                weight: 2, opacity: 1,
                 color: RISK_COLORS[feature?.properties?.riskLevel] || '#666',
                 fillOpacity: 0.4,
               })}
             />
           )}
         </MapContainer>
+
+        {/* Map Controls Sidebar */}
+        <Card sx={{ position: 'absolute', top: 20, left: 20, zIndex: 1000, bgcolor: '#111827', border: '1px solid #1f2937', p: 1, minWidth: 160 }}>
+          <Typography variant="caption" fontWeight={600}>LAYERS</Typography>
+          <Box sx={{ mt: 1 }}>
+            <Button size="small" fullWidth variant={showGrid ? 'contained' : 'outlined'}
+              onClick={() => setShowGrid(!showGrid)}
+              sx={{ mb: 0.5, fontSize: 11, bgcolor: showGrid ? '#ff6f00' : 'transparent', borderColor: '#ff6f00', color: showGrid ? 'white' : '#ff6f00' }}>
+              Risk Grid {loading && <Skeleton width={20} />}
+            </Button>
+            <Button size="small" fullWidth variant={showZones ? 'contained' : 'outlined'}
+              onClick={() => setShowZones(!showZones)}
+              sx={{ mb: 0.5, fontSize: 11, bgcolor: showZones ? '#1b5e20' : 'transparent', borderColor: '#1b5e20', color: showZones ? 'white' : '#1b5e20' }}>
+              Risk Zones
+            </Button>
+          </Box>
+          <Typography variant="caption" fontWeight={600} sx={{ mt: 1, display: 'block' }}>FILTER</Typography>
+          <TextField select fullWidth size="small" value={filterLevel} onChange={e => setFilterLevel(e.target.value)}
+            sx={{ mt: 0.5, '& .MuiInputBase-root': { fontSize: 11 } }}>
+            <MenuItem value="all">All Levels</MenuItem>
+            {Object.keys(RISK_COLORS).map(level => (
+              <MenuItem key={level} value={level} sx={{ textTransform: 'capitalize' }}>{level.replace('_', ' ')}</MenuItem>
+            ))}
+          </TextField>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+            {filteredGrid.length} points • Click map to predict
+          </Typography>
+        </Card>
 
         {/* Legend */}
         <Card sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 1000, bgcolor: '#111827', border: '1px solid #1f2937' }}>
@@ -237,11 +146,14 @@ const MapPage: React.FC = () => {
           <Card sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, bgcolor: '#111827', border: '1px solid #1f2937', minWidth: 250 }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="h6" fontWeight={600}>Point Prediction</Typography>
+                <Typography variant="h6" fontWeight={600}>AI Prediction</Typography>
                 <Button size="small" onClick={() => setSelectedPoint(null)}>×</Button>
               </Box>
               {predicting ? (
-                <Typography color="text.secondary">Analyzing location...</Typography>
+                <Box>
+                  <Skeleton variant="text" width="80%" height={30} sx={{ bgcolor: '#1f2937' }} />
+                  <Skeleton variant="text" width="60%" height={20} sx={{ bgcolor: '#1f2937' }} />
+                </Box>
               ) : (
                 <>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -261,18 +173,8 @@ const MapPage: React.FC = () => {
             </CardContent>
           </Card>
         )}
-
-        {/* Stats bar */}
-        <Card sx={{ position: 'absolute', top: 20, left: 20, zIndex: 1000, bgcolor: '#111827', border: '1px solid #1f2937' }}>
-          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Typography variant="caption" fontWeight={600}>NER Risk Grid</Typography>
-            <Typography variant="caption" color="text.secondary" display="block">
-              {filteredGrid.length} points • Click map to predict
-            </Typography>
-          </CardContent>
-        </Card>
       </Box>
-    </Box>
+    </Layout>
   );
 };
 
