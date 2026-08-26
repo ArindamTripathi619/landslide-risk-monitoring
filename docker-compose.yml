@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7
+    container_name: landslide-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: landslide123
+      MONGO_INITDB_DATABASE: landslide_risk
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: landslide-backend
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:landslide123@mongodb:27017/landslide_risk?authSource=admin
+      JWT_SECRET: landslide-sih2026-secret-key-change-in-production
+      ML_SERVICE_URL: http://ml-service:8000
+      CORS_ORIGIN: "http://localhost:3000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  # Python ML Microservice
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: landslide-ml-service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml-service/models:/app/models
+      - ./ml-service/data:/app/data
+
+  # React Admin Dashboard
+  frontend:
+    build:
+      context: ./frontend/admin-dashboard
+      dockerfile: Dockerfile
+    container_name: landslide-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:5000
+      REACT_APP_ML_SERVICE_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
