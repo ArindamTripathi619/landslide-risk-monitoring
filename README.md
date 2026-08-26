@@ -33,44 +33,42 @@ An AI-powered early warning and monitoring platform for predicting and tracking 
 ### Prerequisites
 - Node.js >= 20
 - Python >= 3.10
-- MongoDB running locally (or Docker)
+- Docker (for MongoDB) or local MongoDB
 
 ### Option A: Docker (Recommended)
 ```bash
-# Start all 4 services
-./start.sh --docker
+# Start MongoDB
+docker run -d --name landslide-mongo -p 27017:27017 mongo:7
 
-# Seed the database with demo data
-docker exec landslide-backend node scripts/seed.js
-```
-
-### Option B: Local Development
-```bash
-# Start everything locally with one command
-./start.sh
-
-# Or start each service individually:
-
-# 1. ML Service (port 8000)
+# Start ML Service (port 8001 — port 8000 may be in use)
 cd ml-service && source venv/bin/activate
-uvicorn api.main:app --reload --port 8000
+uvicorn api.main:app --reload --port 8001
 
-# 2. Backend API (port 5000) — requires MongoDB running
-cd backend && npm install && npm run dev
+# Start Backend (port 5000)
+cd backend && npm install && node server.js
 
-# 3. Seed database with NER demo data
+# Seed database
 cd backend && node scripts/seed.js
 
-# 4. Admin Dashboard (port 3000)
+# Start Dashboard (port 3000)
 cd frontend/admin-dashboard && npm install && npm start
+```
+
+### Option B: One-Command Launcher
+```bash
+./start.sh              # Start all services locally
+./start.sh --docker     # Start with Docker Compose
+./start.sh --seed       # Seed database only
+./start.sh --train      # Retrain ML model
+./start.sh --stop       # Stop Docker services
 ```
 
 ### Seed Database
 ```bash
 cd backend
 node scripts/seed.js
-# Creates: 15 users, ~80 risk zones, 37 weather records,
-#          30-50 alerts, 40-60 landslide events, 20-35 field reports
+# Creates: 15 users, 125 risk zones, 37 weather records,
+#          47 alerts, 55 landslide events, 29 field reports
 ```
 
 ### Retrain ML Model
@@ -84,7 +82,7 @@ python scripts/train_model.py        # Train XGBoost (~80% accuracy)
 
 | Role | Email | Password |
 |------|-------|----------|
-| Super Admin | admin@landslide.gov.in | admin123 |
+| Admin | admin@landslide.gov.in | admin123 |
 | District Admin | rajesh@kamrup.gov.in | admin123 |
 | Field Officer | bikram@field.gov.in | officer123 |
 | Villager | haren@citizen.gov.in | citizen123 |
@@ -139,12 +137,17 @@ landslide-risk-monitoring/
 │   ├── data/processed/             # Cleaned + merged training data
 │   └── models/trained/             # Trained XGBoost model (.pkl)
 ├── frontend/admin-dashboard/       # React + Leaflet.js GIS dashboard
-│   └── src/pages/
-│       ├── LoginPage.tsx           # Auth
-│       ├── DashboardPage.tsx       # Stats cards + alerts + risk summary
-│       ├── MapPage.tsx             # GIS heatmap + click-to-predict
-│       ├── AlertsPage.tsx          # Issue/resolve early warnings
-│       └── ReportsPage.tsx         # View citizen field reports
+│   └── src/
+│       ├── components/
+│       │   ├── Layout.tsx          # Shared responsive sidebar
+│       │   └── ErrorBoundary.tsx   # Crash recovery UI
+│       ├── pages/
+│       │   ├── LoginPage.tsx       # Auth
+│       │   ├── DashboardPage.tsx   # Stats cards + alerts + risk summary
+│       │   ├── MapPage.tsx         # GIS heatmap + click-to-predict
+│       │   ├── AlertsPage.tsx      # Issue/resolve early warnings
+│       │   └── ReportsPage.tsx     # View citizen field reports
+│       └── services/api.ts         # Backend + ML API client
 ├── mobile/LandslideAlertApp/       # React Native mobile app
 │   ├── App.tsx                     # Bottom tab navigation
 │   └── src/screens/
@@ -152,6 +155,7 @@ landslide-risk-monitoring/
 │       ├── ReportScreen.tsx        # 3-step field report wizard
 │       ├── AlertsScreen.tsx        # View + acknowledge alerts
 │       └── LoginScreen.tsx         # Auth
+├── .github/workflows/ci.yml       # GitHub Actions CI
 ├── docker-compose.yml              # 4-service Docker orchestration
 └── start.sh                        # One-command launcher
 ```
@@ -192,6 +196,10 @@ landslide-risk-monitoring/
 | SRTM DEM | USGS / Google Earth Engine | Free |
 | Indian Landslide Susceptibility Map | ILSM on GEE | Public |
 | OpenStreetMap Roads | Overpass API | Free |
+
+## Contributing
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for the fork/PR workflow using `gh` CLI.
 
 ## License
 
