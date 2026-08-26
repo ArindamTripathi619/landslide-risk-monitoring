@@ -5,6 +5,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config({ path: '../.env' });
 
+const bcrypt = require('bcryptjs');
 const connectDB = require('../config/database');
 
 // Import models
@@ -99,7 +100,7 @@ async function seedUsers() {
   
   const users = [
     // Admin
-    { name: 'System Admin', email: 'admin@landslide.gov.in', password: 'admin123', role: 'super_admin', phone: '9876543210', state: 'Assam' },
+    { name: 'System Admin', email: 'admin@landslide.gov.in', password: 'admin123', role: 'admin', phone: '9876543210', state: 'Assam' },
     // District admins
     { name: 'Rajesh Bora', email: 'rajesh@kamrup.gov.in', password: 'admin123', role: 'district_admin', phone: '9876543211', district: 'Kamrup', state: 'Assam' },
     { name: 'Priya Sharma', email: 'priya@dibrugarh.gov.in', password: 'admin123', role: 'district_admin', phone: '9876543212', district: 'Dibrugarh', state: 'Assam' },
@@ -119,6 +120,10 @@ async function seedUsers() {
     { name: 'Amenla Aier', email: 'amenla@citizen.gov.in', password: 'citizen123', role: 'villager', phone: '9876543234', district: 'Tuensang', state: 'Nagaland', village: 'Tuensang Town' },
   ];
 
+  // Hash passwords (insertMany bypasses pre-save hooks)
+  for (const user of users) {
+    user.password = await bcrypt.hash(user.password, 10);
+  }
   const created = await User.insertMany(users);
   console.log(`✅ Users: ${created.length}`);
   return created;
