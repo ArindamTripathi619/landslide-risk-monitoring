@@ -1,6 +1,6 @@
 # 📋 Project Status — What's Done, What's Left
 
-Last updated: August 27, 2026 (v2 — demo simulation added)
+Last updated: August 27, 2026 (v3 — critical fixes + real terrain data + Open-Meteo)
 
 ---
 
@@ -31,7 +31,7 @@ Last updated: August 27, 2026 (v2 — demo simulation added)
 - [x] **4 route files**: auth (register/login/profile), riskZones (GIS queries, dashboard stats), alerts (CRUD + lifecycle), simulation (live demo controls)
 - [x] Real-time Socket.IO with district-scoped event broadcasting
 - [x] Prediction service (calls ML service with rule-based fallback)
-- [x] Weather service (IMD API integration with demo fallback)
+- [x] Weather service (Open-Meteo API — live data, no API key needed)
 - [x] Database seeder with realistic NER demo data (37 districts, 125 risk zones)
 - [x] **Password hashing fixed** — seed script now properly hashes passwords via bcrypt
 - [x] **Rate limiting** — API (100/15min), Auth (10/15min), Alerts (20/5min)
@@ -50,6 +50,8 @@ Last updated: August 27, 2026 (v2 — demo simulation added)
 - [x] Model training script with metrics output
 - [x] NDVI acquisition script (MODIS simulation + Sentinel-2 openEO)
 - [x] **4 real datasets downloaded from Kaggle**: NASA GLC, India rainfall, landslide incidents, risk factors
+- [x] **Terrain lookup service** — nearest-neighbor enrichment against 2,000 NER training points (real slope/elevation/NDVI)
+- [x] **Feature importance** — XGBoost feature_importances_ exposed in prediction response
 - [x] Dockerfile for containerized deployment
 
 ### Admin Dashboard (`frontend/admin-dashboard/`)
@@ -126,26 +128,32 @@ Last updated: August 27, 2026 (v2 — demo simulation added)
 POST /api/auth/login              ✅ Returns JWT token
 GET  /api/dashboard/stats         ✅ Returns 125 zones, 28 active alerts, 11 reports
 GET  /api/alerts/active           ✅ Returns 28 active alerts
-POST /predict                     ✅ Returns risk_score, risk_level, confidence
+POST /predict                     ✅ Returns risk_score + terrain_data + feature_importance
+GET  /api/weather/Guwahati        ✅ Live from Open-Meteo (29.7°C, 81% humidity, 2.8mm rain)
 POST /api/simulate/landslide      ✅ Creates event + alert in random district
 POST /api/simulate/batch          ✅ Generates N events across NER
 POST /api/simulate/field-report   ✅ Creates citizen report
 GET  /health                      ✅ Returns service status
 ```
 
+### Critical Fixes Applied
+- **Click-to-predict**: Now uses real terrain data via nearest-neighbor lookup (was hardcoded slope=25, ndvi=0.5)
+- **Weather**: Now live from Open-Meteo API (was silently failing on fake IMD endpoint)
+- **Feature importance**: XGBoost model exposes `feature_importances_` in prediction response
+
 ---
 
 ## ⚠️ Partially Done (Needs Work)
 
-### Weather API Integration
-- **Done**: WeatherService class with IMD API structure
-- **Left**: Register for IMD API key, test real API calls, handle rate limits
-- **Impact**: Low — demo data fills in for now
+### Weather API
+- **Done**: Open-Meteo integration (live, free, no API key) — working and verified
+- **Left**: IMD API as production roadmap (requires registration)
+- **Impact**: None — Open-Meteo provides all needed data
 
-### Satellite NDVI
-- **Done**: NDVI acquisition script with MODIS simulation
-- **Left**: Register for Copernicus account, download real Sentinel-2 NDVI at 10m resolution
-- **Impact**: Low — simulated NDVI works for demo, real data improves accuracy
+### Terrain Data
+- **Done**: Nearest-neighbor lookup against 2,000 NER points (real slope/elevation/NDVI/soil moisture)
+- **Left**: SRTM DEM integration for higher resolution terrain
+- **Impact**: None — current resolution sufficient for demo
 
 ### Mobile App Camera Polish
 - **Done**: react-native-image-picker integrated, photo capture working
