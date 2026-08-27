@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const ML_BASE = process.env.REACT_APP_ML_URL || 'http://localhost:8000';
+const ML_BASE = process.env.REACT_APP_ML_URL || 'http://localhost:8001';
 
 const api = axios.create({ baseURL: API_BASE });
 const mlApi = axios.create({ baseURL: ML_BASE });

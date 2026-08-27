@@ -10,6 +10,7 @@ const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const riskRoutes = require('./routes/riskZones');
 const alertRoutes = require('./routes/alerts');
+const simulationRoutes = require('./routes/simulation');
 const SocketHandler = require('./socket/socketHandler');
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
 
@@ -41,6 +42,7 @@ app.use('/api/auth', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api', riskRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/api/simulate', simulationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

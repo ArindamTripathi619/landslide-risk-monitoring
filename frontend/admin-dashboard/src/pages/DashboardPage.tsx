@@ -2,15 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Grid, Card, CardContent, Chip, List, ListItem,
-  ListItemText, ListItemIcon, Button, Skeleton, Alert,
+  ListItemText, ListItemIcon, Button, Skeleton, Alert, Snackbar, IconButton,
+  Tooltip, CircularProgress, Divider,
 } from '@mui/material';
 import {
   Warning as WarningIcon, Assessment as AssessmentIcon,
   Report as ReportIcon, Terrain as TerrainIcon, Cloud as CloudIcon,
-  Refresh as RefreshIcon,
+  Refresh as RefreshIcon, PlayArrow as PlayIcon, Bolt as BoltIcon,
+  Terrain as SimulateIcon, Article as ReportSimIcon,
 } from '@mui/icons-material';
 import Layout from '../components/Layout';
 import { getDashboardStats, getActiveAlerts, getNERRiskGrid } from '../services/api';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const RISK_COLORS: Record<string, string> = {
   low: '#4caf50', moderate: '#ff9800', high: '#f44336',
@@ -24,6 +28,8 @@ const DashboardPage: React.FC = () => {
   const [riskSummary, setRiskSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   useEffect(() => {
     loadDashboard();
@@ -85,6 +91,99 @@ const DashboardPage: React.FC = () => {
             {error}
           </Alert>
         )}
+
+        {/* Demo Controls */}
+        <Card sx={{ bgcolor: '#111827', border: '1px solid #ff6f00', mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <BoltIcon sx={{ color: '#ff6f00' }} />
+              <Typography variant="h6" fontWeight={600}>Demo Controls</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Click these buttons during your presentation to simulate live events
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Tooltip title="Simulate a random landslide event in NER">
+                <Button
+                  variant="contained"
+                  startIcon={simulating ? <CircularProgress size={16} /> : <PlayIcon />}
+                  disabled={simulating}
+                  onClick={async () => {
+                    setSimulating(true);
+                    try {
+                      const token = localStorage.getItem('lrn_token');
+                      const res = await fetch(`${API_BASE}/simulate/landslide`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      });
+                      const data = await res.json();
+                      setSnackbar({ open: true, message: data.message || 'Landslide simulated!', severity: 'success' });
+                      loadDashboard();
+                    } catch (e) {
+                      setSnackbar({ open: true, message: 'Simulation failed — are you logged in as admin?', severity: 'error' });
+                    }
+                    setSimulating(false);
+                  }}
+                  sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}>
+                  Simulate Landslide
+                </Button>
+              </Tooltip>
+
+              <Tooltip title="Generate 5-15 random events across NER">
+                <Button
+                  variant="contained"
+                  startIcon={simulating ? <CircularProgress size={16} /> : <SimulateIcon />}
+                  disabled={simulating}
+                  onClick={async () => {
+                    setSimulating(true);
+                    try {
+                      const token = localStorage.getItem('lrn_token');
+                      const res = await fetch(`${API_BASE}/simulate/batch`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ count: 10 }),
+                      });
+                      const data = await res.json();
+                      setSnackbar({ open: true, message: data.message || 'Batch simulation complete!', severity: 'success' });
+                      loadDashboard();
+                    } catch (e) {
+                      setSnackbar({ open: true, message: 'Batch simulation failed', severity: 'error' });
+                    }
+                    setSimulating(false);
+                  }}
+                  sx={{ bgcolor: '#ff6f00', '&:hover': { bgcolor: '#e65100' } }}>
+                  Generate Batch Events
+                </Button>
+              </Tooltip>
+
+              <Tooltip title="Create a simulated citizen field report">
+                <Button
+                  variant="outlined"
+                  startIcon={simulating ? <CircularProgress size={16} /> : <ReportSimIcon />}
+                  disabled={simulating}
+                  onClick={async () => {
+                    setSimulating(true);
+                    try {
+                      const token = localStorage.getItem('lrn_token');
+                      const res = await fetch(`${API_BASE}/simulate/field-report`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      });
+                      const data = await res.json();
+                      setSnackbar({ open: true, message: data.message || 'Field report created!', severity: 'success' });
+                      loadDashboard();
+                    } catch (e) {
+                      setSnackbar({ open: true, message: 'Report simulation failed', severity: 'error' });
+                    }
+                    setSimulating(false);
+                  }}
+                  sx={{ borderColor: '#1b5e20', color: '#1b5e20' }}>
+                  Simulate Field Report
+                </Button>
+              </Tooltip>
+            </Box>
+          </CardContent>
+        </Card>
 
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -189,6 +288,17 @@ const DashboardPage: React.FC = () => {
           </Grid>
         </Grid>
       </Box>
+    </Layout>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Layout>
   );
 };
