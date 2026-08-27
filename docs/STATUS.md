@@ -1,6 +1,6 @@
 # 📋 Project Status — What's Done, What's Left
 
-Last updated: August 27, 2026
+Last updated: August 27, 2026 (v2 — demo simulation added)
 
 ---
 
@@ -13,8 +13,9 @@ Last updated: August 27, 2026
 | Admin Dashboard | ✅ 100% | — | — |
 | Mobile App | ✅ 90% | — | 10% (camera polish) |
 | Data Pipeline | ✅ 80% | — | 20% (live feeds) |
-| DevOps | ✅ 85% | — | 15% (cloud deploy) |
+| DevOps | ✅ 95% | — | 5% (cloud deploy) |
 | Testing | ✅ 85% | — | 15% (frontend tests) |
+| Demo System | ✅ 100% | — | — |
 | Documentation | ✅ 100% | — | — |
 
 ---
@@ -27,7 +28,7 @@ Last updated: August 27, 2026
 - [x] JWT authentication with bcrypt password hashing
 - [x] Role-based access control (admin, district_admin, field_officer, villager)
 - [x] **6 data models**: User, RiskZone, WeatherData, LandslideEvent, FieldReport, Alert
-- [x] **3 route files**: auth (register/login/profile), riskZones (GIS queries, dashboard stats), alerts (CRUD + lifecycle)
+- [x] **4 route files**: auth (register/login/profile), riskZones (GIS queries, dashboard stats), alerts (CRUD + lifecycle), simulation (live demo controls)
 - [x] Real-time Socket.IO with district-scoped event broadcasting
 - [x] Prediction service (calls ML service with rule-based fallback)
 - [x] Weather service (IMD API integration with demo fallback)
@@ -88,6 +89,7 @@ Last updated: August 27, 2026
 ### Infrastructure
 - [x] `docker-compose.yml` — orchestrates MongoDB, backend, ML service, frontend
 - [x] `start.sh` — one-command launcher with --docker, --seed, --train, --stop, --clean modes
+- [x] `demo.sh` — demo startup script with service ordering, login credentials, and demo flow guide
 - [x] `.gitignore` — excludes node_modules, venv, .env, data files
 - [x] `.env.example` — template for environment variables
 - [x] **GitHub Actions CI** — backend lint, ML compile check, frontend typecheck
@@ -110,12 +112,24 @@ Last updated: August 27, 2026
 - [x] **55 landslide events** (historical, various severities)
 - [x] **29 field reports** (citizen-submitted, geo-tagged)
 
+### Demo Simulation System
+- [x] **Simulate Landslide** — creates random event in NER + auto-generates alert
+- [x] **Batch Simulation** — generates 5-15 random events across 28 districts
+- [x] **Simulate Field Report** — creates citizen report from random district
+- [x] **Simulation Stats** — track simulated events, alerts, reports
+- [x] **Dashboard Demo Controls** — orange-bordered panel with 3 action buttons
+- [x] **Toast notifications** — success/error feedback on simulation results
+- [x] **Weighted district selection** — higher-risk districts more likely to be selected
+
 ### Verified API Endpoints
 ```
 POST /api/auth/login              ✅ Returns JWT token
-GET  /api/dashboard/stats         ✅ Returns 125 zones, 25 active alerts, 29 reports
-GET  /api/alerts/active           ✅ Returns 25 active alerts
+GET  /api/dashboard/stats         ✅ Returns 125 zones, 28 active alerts, 11 reports
+GET  /api/alerts/active           ✅ Returns 28 active alerts
 POST /predict                     ✅ Returns risk_score, risk_level, confidence
+POST /api/simulate/landslide      ✅ Creates event + alert in random district
+POST /api/simulate/batch          ✅ Generates N events across NER
+POST /api/simulate/field-report   ✅ Creates citizen report
 GET  /health                      ✅ Returns service status
 ```
 
@@ -185,15 +199,19 @@ GET  /health                      ✅ Returns service status
 
 ---
 
-## Priority Order for MVP Demo
+## 🎯 Demo Flow for Judges
 
-If you have limited time, focus on this order:
+Complete demo script for SIH presentation:
 
-1. ✅ **Seed the database** and run the dashboard — DONE
-2. ✅ **Click-to-predict** — show the ML model working in real-time — DONE
-3. **Issue an alert** from the dashboard — show it appearing in the list
-4. **Submit a field report** from the mobile app — show it on the admin dashboard
-5. **Show the weather data** — demonstrate IMD integration readiness
+1. ✅ **Start services**: `./demo.sh` → shows all URLs and credentials
+2. ✅ **Login**: admin@landslide.gov.in / admin123
+3. ✅ **Dashboard**: Show stats cards, risk distribution, active alerts
+4. ✅ **Simulate Landslide**: Click button → event + alert created in real-time
+5. ✅ **Risk Map**: Show GIS heatmap, click anywhere for AI prediction
+6. ✅ **Export**: Download GeoJSON/CSV from map
+7. ✅ **Alerts**: Show timeline view, issue/resolve workflow
+8. ✅ **Reports**: Show citizen field reports with status tracking
+9. ✅ **Mobile**: Show field reporting wizard (if phone available)
 
 That covers the full loop the judges will want to see.
 
@@ -203,12 +221,12 @@ That covers the full loop the judges will want to see.
 
 | Directory | Source Files | Description |
 |---|---|---|
-| `backend/` | 17 files | Express API server + tests + middleware |
+| `backend/` | 18 files | Express API server + tests + middleware + simulation |
 | `ml-service/` | 5 files | Python ML microservice |
-| `frontend/admin-dashboard/` | 11 files | React GIS dashboard + components |
+| `frontend/admin-dashboard/` | 11 files | React GIS dashboard + demo controls |
 | `mobile/LandslideAlertApp/` | 14 files | React Native mobile app + offline queue + i18n |
 | `docs/` | 3 files | Project, Status, Contributing docs |
 | `ml-service/scripts/` | 3 files | Dataset prep, training, NDVI |
 | `.github/workflows/` | 1 file | CI pipeline |
-| Root | 5 files | Docker, start script, README, gitignore, .env.example |
-| **Total** | **59 source files** | |
+| Root | 6 files | Docker, start script, demo script, README, gitignore, .env.example |
+| **Total** | **61 source files** | |

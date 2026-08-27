@@ -54,7 +54,14 @@ cd backend && node scripts/seed.js
 cd frontend/admin-dashboard && npm install && npm start
 ```
 
-### Option B: One-Command Launcher
+### Option B: Demo Startup (Recommended for Presentation)
+```bash
+./demo.sh               # Start all services + show credentials + demo flow
+./demo.sh --status      # Check what's running
+./demo.sh --stop        # Stop everything
+```
+
+### Option C: One-Command Launcher
 ```bash
 ./start.sh              # Start all services locally
 ./start.sh --docker     # Start with Docker Compose
@@ -101,15 +108,22 @@ python scripts/train_model.py        # Train XGBoost (~80% accuracy)
 | GET | /api/dashboard/stats | Dashboard statistics | Yes |
 | POST | /api/alerts | Issue alert | Yes (admin) |
 | GET | /api/alerts | List alerts | Yes |
+| GET | /api/alerts/active | Active alerts only | Yes |
 | POST | /api/field-reports | Submit field report | Yes |
+| POST | /api/simulate/landslide | Simulate landslide event | Yes (admin) |
+| POST | /api/simulate/batch | Generate batch events | Yes (admin) |
+| POST | /api/simulate/field-report | Simulate citizen report | Yes |
 
 ## 📁 Project Structure
 
 ```
 landslide-risk-monitoring/
-├── backend/                        # Node.js API server (14 source files)
+├── backend/                        # Node.js API server (18 source files)
 │   ├── config/database.js          # MongoDB connection
-│   ├── middleware/auth.js          # JWT auth + role-based access
+│   ├── middleware/
+│   │   ├── auth.js                 # JWT auth + role-based access
+│   │   ├── rateLimiter.js          # Rate limiting (API, Auth, Alerts)
+│   │   └── validation.js           # Input validation (express-validator)
 │   ├── models/                     # 6 Mongoose models
 │   │   ├── User.js                 # Users with NER roles
 │   │   ├── RiskZone.js             # GIS risk zones (GeoJSON)
@@ -117,12 +131,13 @@ landslide-risk-monitoring/
 │   │   ├── LandslideEvent.js       # Historical/real-time events
 │   │   ├── FieldReport.js          # Citizen geo-tagged reports
 │   │   └── Alert.js                # Multilingual early warnings
-│   ├── routes/                     # auth, riskZones, alerts
+│   ├── routes/                     # auth, riskZones, alerts, simulation
 │   ├── scripts/seed.js             # Database seeder (demo data)
 │   ├── services/
 │   │   ├── predictionService.js    # Calls ML service + rule fallback
 │   │   └── weatherService.js       # IMD API integration
 │   ├── socket/socketHandler.js     # District-scoped real-time events
+│   ├── tests/api.test.js           # 16 API tests (auth, alerts, validation)
 │   └── server.js                   # Express + Socket.IO entry point
 ├── ml-service/                     # Python ML microservice
 │   ├── api/main.py                 # FastAPI with /predict, /train
@@ -139,24 +154,33 @@ landslide-risk-monitoring/
 ├── frontend/admin-dashboard/       # React + Leaflet.js GIS dashboard
 │   └── src/
 │       ├── components/
-│       │   ├── Layout.tsx          # Shared responsive sidebar
+│       │   ├── Layout.tsx          # Shared responsive sidebar + notification badges
 │       │   └── ErrorBoundary.tsx   # Crash recovery UI
 │       ├── pages/
 │       │   ├── LoginPage.tsx       # Auth
-│       │   ├── DashboardPage.tsx   # Stats cards + alerts + risk summary
-│       │   ├── MapPage.tsx         # GIS heatmap + click-to-predict
-│       │   ├── AlertsPage.tsx      # Issue/resolve early warnings
+│       │   ├── DashboardPage.tsx   # Stats + alerts + risk summary + DEMO CONTROLS
+│       │   ├── MapPage.tsx         # GIS heatmap + click-to-predict + GeoJSON/CSV export
+│       │   ├── AlertsPage.tsx      # Issue/resolve + timeline view toggle
 │       │   └── ReportsPage.tsx     # View citizen field reports
-│       └── services/api.ts         # Backend + ML API client
-├── mobile/LandslideAlertApp/       # React Native mobile app
-│   ├── App.tsx                     # Bottom tab navigation
-│   └── src/screens/
-│       ├── DashboardScreen.tsx     # Alerts + weather + stats
-│       ├── ReportScreen.tsx        # 3-step field report wizard
-│       ├── AlertsScreen.tsx        # View + acknowledge alerts
-│       └── LoginScreen.tsx         # Auth
+│       └── services/api.ts         # Backend + ML API client (port 8001)
+├── mobile/LandslideAlertApp/       # React Native mobile app (14 files)
+│   ├── App.tsx                     # Bottom tab navigation (4 tabs)
+│   └── src/
+│       ├── screens/
+│       │   ├── DashboardScreen.tsx # Alerts + weather + stats
+│       │   ├── ReportScreen.tsx    # 3-step wizard + offline queue
+│       │   ├── AlertsScreen.tsx    # View + acknowledge alerts
+│       │   ├── ProfileScreen.tsx   # Language switcher + settings
+│       │   └── LoginScreen.tsx     # Auth
+│       ├── services/
+│       │   ├── api.ts              # REST client
+│       │   ├── socketService.ts    # Real-time Socket.IO
+│       │   ├── offlineQueue.ts     # Offline report queue + auto-sync
+│       │   └── translations.ts     # i18n (EN, AS, BN, HI, NE)
+│       └── types/index.ts          # TypeScript types
 ├── .github/workflows/ci.yml       # GitHub Actions CI
 ├── docker-compose.yml              # 4-service Docker orchestration
+├── demo.sh                         # Demo startup + credentials + flow guide
 └── start.sh                        # One-command launcher
 ```
 
@@ -197,9 +221,27 @@ landslide-risk-monitoring/
 | Indian Landslide Susceptibility Map | ILSM on GEE | Public |
 | OpenStreetMap Roads | Overpass API | Free |
 
-## Contributing
+## 🎯 Demo Flow for Judges
 
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for the fork/PR workflow using `gh` CLI.
+```bash
+./demo.sh                              # Start everything
+# → Opens Dashboard at http://localhost:3000
+# → Login: admin@landslide.gov.in / admin123
+```
+
+1. **Dashboard** — Show stats cards, risk distribution, active alerts
+2. **Simulate Landslide** — Click button → event + alert created live
+3. **Risk Map** — Show GIS heatmap, click anywhere for AI prediction
+4. **Export** — Download GeoJSON/CSV from map
+5. **Alerts** — Timeline view, issue/resolve workflow
+6. **Reports** — Citizen field reports with status tracking
+7. **Mobile** — Field reporting wizard (if phone available)
+
+## Documentation
+
+- [docs/PROJECT.md](docs/PROJECT.md) — Full project aims, requirements, architecture
+- [docs/STATUS.md](docs/STATUS.md) — What's done, what's left, demo flow
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — Fork/PR workflow for contributors
 
 ## License
 
