@@ -140,16 +140,17 @@ landslide-risk-monitoring/
 │   ├── tests/api.test.js           # 16 API tests (auth, alerts, validation)
 │   └── server.js                   # Express + Socket.IO entry point
 ├── ml-service/                     # Python ML microservice
-│   ├── api/main.py                 # FastAPI with /predict, /train
+│   ├── api/main.py                 # FastAPI with /predict, /train + terrain enrichment
 │   ├── api/schemas.py              # Pydantic request/response models
 │   ├── utils/model.py              # XGBoost + rule-based fallback
+│   ├── utils/terrain_lookup.py     # Nearest-neighbor terrain enrichment (real data)
 │   ├── utils/data_preprocessing.py # Data loading + feature engineering
 │   ├── scripts/
 │   │   ├── prepare_datasets.py     # Process Kaggle raw data
 │   │   ├── train_model.py          # Train XGBoost model
 │   │   └── download_ndvi.py        # NDVI acquisition (MODIS/Sentinel)
-│   ├── data/raw/                   # Downloaded Kaggle datasets
-│   ├── data/processed/             # Cleaned + merged training data
+│   ├── data/raw/                   # Downloaded datasets (NASA GLC, shapefiles, flood data)
+│   ├── data/processed/             # Cleaned + merged data (95 districts, 11K roads, 10K flood records)
 │   └── models/trained/             # Trained XGBoost model (.pkl)
 ├── frontend/admin-dashboard/       # React + Leaflet.js GIS dashboard
 │   └── src/
@@ -202,24 +203,28 @@ landslide-risk-monitoring/
 
 ## 📡 Datasets
 
-| Dataset | Source | Rows | Size |
-|---------|--------|------|------|
-| NASA Global Landslide Catalog | Kaggle | 1,693 | 432KB |
-| India Rainfall (1901-2015) | Kaggle | 4,116 | 516KB |
-| India Landslide Incidents | Kaggle | ~200 | 34KB |
-| Landslide Risk Factors | Kaggle | ~10K | 994KB |
-| NER Training Data | Generated | 2,000 | — |
-| MODIS NDVI Grid | Generated | 9,000 | — |
+### Real Data (downloaded, verified)
+| Dataset | Source | Records | Size | Access |
+|---------|--------|---------|------|--------|
+| NASA Global Landslide Catalog | Kaggle | 1,693 | 432KB | Public |
+| India Rainfall (1901-2015) | Kaggle | 4,116 | 516KB | Public |
+| India Landslide Incidents | Kaggle | ~200 | 34KB | Public |
+| **NER District Polygons** | India Shapefiles | **95 districts** | 850KB | Public |
+| **NER Road Network** | OpenStreetMap | **11,046 segments** | 5MB | **No signup, no API key** |
+| **Flood Station Daily Data** | Asia Flood Atlas | **10,048 records** | 1.4MB | Public |
+| Live Weather | Open-Meteo API | Real-time | — | **No signup, no API key** |
 
-## 📡 Additional Data Sources (for enhancement)
+### Generated Data
+| Dataset | Records | Description |
+|---------|---------|-------------|
+| NER Training Data | 2,000 | Terrain features for ML training |
+| MODIS NDVI Grid | 9,000 | Vegetation index across NER |
 
-| Data | Source | Access |
-|------|--------|--------|
-| IMD Real-time Rainfall | api.imd.gov.in | Free API key |
-| Sentinel-2 Satellite | Copernicus Data Space | Free account |
-| SRTM DEM | USGS / Google Earth Engine | Free |
-| Indian Landslide Susceptibility Map | ILSM on GEE | Public |
-| OpenStreetMap Roads | Overpass API | Free |
+### Remaining (needs account signup)
+| Data | Where to Sign Up | What You Get |
+|------|-----------------|--------------|
+| Sentinel-2 NDVI | [Copernicus Data Space](https://dataspace.copernicus.eu/) | Real 10m vegetation index |
+| SRTM DEM | [USGS EarthExplorer](https://earthexplorer.usgs.gov/) | Real 30m elevation/slope |
 
 ## 🎯 Demo Flow for Judges
 

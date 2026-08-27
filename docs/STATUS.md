@@ -1,6 +1,6 @@
 # 📋 Project Status — What's Done, What's Left
 
-Last updated: August 27, 2026 (v3 — critical fixes + real terrain data + Open-Meteo)
+Last updated: August 27, 2026 (v4 — real road network + district polygons + flood stations)
 
 ---
 
@@ -12,7 +12,7 @@ Last updated: August 27, 2026 (v3 — critical fixes + real terrain data + Open-
 | ML Service | ✅ 90% | — | 10% (real-time data) |
 | Admin Dashboard | ✅ 100% | — | — |
 | Mobile App | ✅ 90% | — | 10% (camera polish) |
-| Data Pipeline | ✅ 80% | — | 20% (live feeds) |
+| Data Pipeline | ✅ 95% | — | 5% (Sentinel-2 NDVI, SRTM DEM) |
 | DevOps | ✅ 95% | — | 5% (cloud deploy) |
 | Testing | ✅ 85% | — | 15% (frontend tests) |
 | Demo System | ✅ 100% | — | — |
@@ -103,6 +103,13 @@ Last updated: August 27, 2026 (v3 — critical fixes + real terrain data + Open-
 - [x] Landslide Risk Factors (~10K rows) — downloaded from Kaggle
 - [x] NER Training Data (2,000 samples) — generated with realistic distributions
 - [x] MODIS NDVI Grid (9,000 points) — generated for NER region
+- [x] **95 NER District Polygons** (real GeoJSON boundaries) — extracted from India Shapefiles
+- [x] **11,046 Road Segments** (real OSM data) — downloaded via Overpass API
+- [x] **10,048 Flood Station Records** (daily rainfall, river level, soil moisture) — from Asia Flood Atlas
+- [x] **India District Shapefiles** (raw, 31MB) — downloaded from Kaggle
+- [x] **Asia Flood Risk Atlas** (25-year data, 68MB) — downloaded from Kaggle
+- [x] **India Drought Data** (agricultural + groundwater, 31MB) — downloaded from Kaggle
+- [x] **Landslide & Flood Probability** (50 Indian cities) — downloaded from Kaggle
 - [x] Prepared/cleaned versions of all datasets
 
 ### Database (Verified Working)
@@ -195,10 +202,9 @@ GET  /health                      ✅ Returns service status
 - **Good first issue for**: ML contributors
 
 ### Road Network Analysis
-- **What**: Fetch OSM road data, compute road blockage impact, show on map
-- **Why**: Show which roads are cut off and alternative routes
-- **Effort**: 3-5 days
-- **Good first issue for**: GIS contributors
+- **Done**: 11,046 real OSM road segments downloaded via Overpass API (no signup needed)
+- **Left**: Integrate into map layer, add status indicators (open/at_risk/blocked)
+- **Impact**: None — data ready, just needs UI integration
 
 ### Admin Dashboard — Additional Features
 - [ ] User management dashboard (CRUD users)
