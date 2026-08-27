@@ -1,6 +1,6 @@
 # 📋 Project Status — What's Done, What's Left
 
-Last updated: August 26, 2026
+Last updated: August 27, 2026
 
 ---
 
@@ -10,10 +10,11 @@ Last updated: August 26, 2026
 |---|---|---|---|
 | Backend API | ✅ 100% | — | — |
 | ML Service | ✅ 90% | — | 10% (real-time data) |
-| Admin Dashboard | ✅ 95% | — | 5% (export features) |
-| Mobile App | ✅ 70% | — | 30% (offline sync, camera) |
+| Admin Dashboard | ✅ 100% | — | — |
+| Mobile App | ✅ 90% | — | 10% (camera polish) |
 | Data Pipeline | ✅ 80% | — | 20% (live feeds) |
 | DevOps | ✅ 85% | — | 15% (cloud deploy) |
+| Testing | ✅ 85% | — | 15% (frontend tests) |
 | Documentation | ✅ 100% | — | — |
 
 ---
@@ -32,6 +33,9 @@ Last updated: August 26, 2026
 - [x] Weather service (IMD API integration with demo fallback)
 - [x] Database seeder with realistic NER demo data (37 districts, 125 risk zones)
 - [x] **Password hashing fixed** — seed script now properly hashes passwords via bcrypt
+- [x] **Rate limiting** — API (100/15min), Auth (10/15min), Alerts (20/5min)
+- [x] **Input validation** — express-validator for all endpoints
+- [x] **API tests** — 16 tests covering auth, alerts, risk zones, validation
 - [x] Dockerfile for containerized deployment
 
 ### ML Service (`ml-service/`)
@@ -54,10 +58,12 @@ Last updated: August 26, 2026
 - [x] **Dashboard page** with stats cards (zones, alerts, events, reports), recent alerts list, risk summary
 - [x] **GIS Map page** with Leaflet.js heatmap showing risk zones, color-coded by severity
 - [x] **Click-to-predict** — click anywhere on map to get instant AI risk prediction
-- [x] **Alerts page** with issue/resolve workflow, severity filters
+- [x] **Export GeoJSON/CSV** — download risk grid data from map
+- [x] **Alerts page** with issue/resolve workflow, severity filters, timeline view toggle
 - [x] **Reports page** showing citizen field reports with status tracking
 - [x] **Shared Layout component** — sidebar extracted, no code duplication
 - [x] **Responsive sidebar** — collapsible drawer on mobile screens
+- [x] **Notification badges** — shows active alerts and pending reports counts
 - [x] **Loading skeletons** — all pages show shimmer while data loads
 - [x] **ErrorBoundary** — graceful crash recovery with Try Again / Reload
 - [x] **Error alerts** — shows warning when backend is unreachable
@@ -72,6 +78,9 @@ Last updated: August 26, 2026
 - [x] **Dashboard screen** showing alerts, weather summary, risk stats
 - [x] **Report screen** with 3-step wizard (select type → add description → capture location)
 - [x] **Alerts screen** showing active alerts with severity indicators
+- [x] **Profile screen** with language switcher, settings, emergency contacts
+- [x] **Offline queue** — reports queue locally when offline, auto-sync when online
+- [x] **Multi-language support** — English, Assamese, Bengali, Hindi, Nepali
 - [x] API service layer with base URL configuration
 - [x] Socket.IO service for real-time updates
 - [x] TypeScript types for all data models
@@ -124,15 +133,10 @@ GET  /health                      ✅ Returns service status
 - **Left**: Register for Copernicus account, download real Sentinel-2 NDVI at 10m resolution
 - **Impact**: Low — simulated NDVI works for demo, real data improves accuracy
 
-### Mobile App Camera
-- **Done**: Report screen with location capture
-- **Left**: Integrate react-native-camera for photo/video capture, file upload to backend
-- **Impact**: Medium — needed for field reporting demo
-
-### Mobile Offline Sync
-- **Done**: AsyncStorage-based local state
-- **Left**: Queue reports locally, detect network status, sync when online
-- **Impact**: Medium — key differentiator for NER remote areas
+### Mobile App Camera Polish
+- **Done**: react-native-image-picker integrated, photo capture working
+- **Left**: Photo compression, upload progress indicator, video capture
+- **Impact**: Low — basic camera works for demo
 
 ---
 
@@ -174,16 +178,10 @@ GET  /health                      ✅ Returns service status
 - **Effort**: 3-5 days
 - **Good first issue for**: GIS contributors
 
-### Multi-Language Mobile UI
-- **What**: Translate mobile app screens to Assamese, Bengali, Hindi
-- **Why**: Many NER villagers don't read English
-- **Effort**: 2-3 days
-- **Good first issue for**: Frontend/localization contributors
-
-### Admin Dashboard — Remaining Polish
-- [ ] Export risk zones as GeoJSON/CSV
-- [ ] Notification badges on nav items
-- [ ] Timeline view for alert history
+### Admin Dashboard — Additional Features
+- [ ] User management dashboard (CRUD users)
+- [ ] Audit log for admin actions
+- [ ] Real-time weather widget with IMD API
 
 ---
 
@@ -205,12 +203,12 @@ That covers the full loop the judges will want to see.
 
 | Directory | Source Files | Description |
 |---|---|---|
-| `backend/` | 14 files | Express API server |
+| `backend/` | 17 files | Express API server + tests + middleware |
 | `ml-service/` | 5 files | Python ML microservice |
 | `frontend/admin-dashboard/` | 11 files | React GIS dashboard + components |
-| `mobile/LandslideAlertApp/` | 10 files | React Native mobile app |
+| `mobile/LandslideAlertApp/` | 14 files | React Native mobile app + offline queue + i18n |
 | `docs/` | 3 files | Project, Status, Contributing docs |
 | `ml-service/scripts/` | 3 files | Dataset prep, training, NDVI |
 | `.github/workflows/` | 1 file | CI pipeline |
 | Root | 5 files | Docker, start script, README, gitignore, .env.example |
-| **Total** | **52 source files** | |
+| **Total** | **59 source files** | |
