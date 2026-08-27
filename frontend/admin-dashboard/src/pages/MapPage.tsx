@@ -44,7 +44,8 @@ const MapPage: React.FC = () => {
   const handleMapClick = useCallback(async (lat: number, lng: number) => {
     setPredicting(true);
     try {
-      const prediction = await getMLPrediction(lat, lng, { slope: 25, rainfall_24hr: 30, ndvi: 0.5 });
+      // Send empty features — ML service enriches with real terrain data via nearest-neighbor lookup
+      const prediction = await getMLPrediction(lat, lng, {});
       setSelectedPoint({ lat, lng, ...prediction });
     } catch (e) {
       setSelectedPoint({ lat, lng, risk_score: 50, risk_level: 'moderate', confidence: 0.5, source: 'offline' });
@@ -196,10 +197,46 @@ const MapPage: React.FC = () => {
                   </Box>
                   <Typography variant="body2" color="text.secondary">Risk Score: {selectedPoint.risk_score?.toFixed(1)}/100</Typography>
                   <Typography variant="body2" color="text.secondary">Confidence: {((selectedPoint.confidence || 0) * 100).toFixed(0)}%</Typography>
-                  <Typography variant="body2" color="text.secondary">Source: {selectedPoint.source}</Typography>
+                  <Typography variant="body2" color="text.secondary">Source: {selectedPoint.source === 'ml_model' ? 'XGBoost Model' : 'Rule-Based Fallback'}</Typography>
                   <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
                     📍 {selectedPoint.lat?.toFixed(4)}, {selectedPoint.lng?.toFixed(4)}
                   </Typography>
+
+                  {/* Terrain Data Used */}
+                  {selectedPoint.terrain_data && (
+                    <Box sx={{ mt: 1.5, p: 1, bgcolor: '#1f2937', borderRadius: 1 }}>
+                      <Typography variant="caption" fontWeight={600} color="text.secondary">TERRAIN DATA USED</Typography>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5, mt: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">Slope: {selectedPoint.terrain_data.slope}°</Typography>
+                        <Typography variant="caption" color="text.secondary">Elev: {selectedPoint.terrain_data.elevation}m</Typography>
+                        <Typography variant="caption" color="text.secondary">NDVI: {selectedPoint.terrain_data.ndvi}</Typography>
+                        <Typography variant="caption" color="text.secondary">Soil: {selectedPoint.terrain_data.soil_moisture}</Typography>
+                      </Box>
+                      <Typography variant="caption" color="#ff6f00" display="block" sx={{ mt: 0.5 }}>
+                        Source: {selectedPoint.terrain_data.source === 'terrain_lookup' ? 'Nearest-neighbor (real data)' : 'Defaults'}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Feature Importance */}
+                  {selectedPoint.feature_importance && Object.keys(selectedPoint.feature_importance).length > 0 && (
+                    <Box sx={{ mt: 1.5, p: 1, bgcolor: '#1f2937', borderRadius: 1 }}>
+                      <Typography variant="caption" fontWeight={600} color="text.secondary">WHY THIS SCORE?</Typography>
+                      {Object.entries(selectedPoint.feature_importance).slice(0, 6).map(([feature, importance]) => (
+                        <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ minWidth: 100, textTransform: 'capitalize' }}>
+                            {feature.replace('_', ' ')}
+                          </Typography>
+                          <Box sx={{ flex: 1, bgcolor: '#0a0e17', borderRadius: 1, height: 8 }}>
+                            <Box sx={{ width: `${importance}%`, bgcolor: '#ff6f00', borderRadius: 1, height: 8, transition: 'width 0.5s' }} />
+                          </Box>
+                          <Typography variant="caption" color="#ff6f00" sx={{ minWidth: 35, textAlign: 'right' }}>
+                            {importance}%
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
                 </>
               )}
             </CardContent>

@@ -6,6 +6,7 @@ const WeatherData = require('../models/WeatherData');
 const Alert = require('../models/Alert');
 const FieldReport = require('../models/FieldReport');
 const { auth, requireRole } = require('../middleware/auth');
+const WeatherService = require('../services/weatherService');
 
 // GET /api/risk-zones — all risk zones (for heatmap)
 router.get('/risk-zones', auth, async (req, res) => {
@@ -63,14 +64,21 @@ router.get('/risk-zones/:id', auth, async (req, res) => {
   }
 });
 
-// GET /api/weather/:district — latest weather for a district
+// GET /api/weather/:district — live weather from Open-Meteo
 router.get('/weather/:district', auth, async (req, res) => {
   try {
-    const data = await WeatherData.findOne({ district: req.params.district })
-      .sort({ fetchedAt: -1 });
-    res.json({ success: true, weather: data });
+    const weather = await WeatherService.getDistrictWeather(req.params.district);
+    res.json({ success: true, weather });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(`Weather error for ${req.params.district}:`, error.message);
+    // Fallback to database
+    try {
+      const data = await WeatherData.findOne({ district: req.params.district })
+        .sort({ fetchedAt: -1 });
+      res.json({ success: true, weather: data });
+    } catch (dbError) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
 });
 

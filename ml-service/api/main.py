@@ -24,6 +24,7 @@ from schemas import (
     DistrictRiskResponse, HealthResponse,
 )
 from utils.model import LandslidePredictor
+from utils.terrain_lookup import terrain_lookup
 from utils.data_preprocessing import (
     load_nasa_glc, preprocess_for_training, generate_demo_ner_data
 )
@@ -57,10 +58,9 @@ async def health_check():
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict_risk(request: PredictionRequest):
-    """Predict landslide risk for a single location."""
-    features = {
-        'latitude': request.latitude,
-        'longitude': request.longitude,
+    """Predict landslide risk for a single location with real terrain data."""
+    # User-provided features
+    provided = {
         'slope': request.slope,
         'aspect': request.aspect,
         'elevation': request.elevation,
@@ -72,7 +72,21 @@ async def predict_risk(request: PredictionRequest):
         'distance_to_road': request.distance_to_road,
     }
 
+    # Enrich with real terrain data from nearest-neighbor lookup
+    features = terrain_lookup.enrich_features(
+        request.latitude, request.longitude, provided
+    )
+
     result = predictor.predict(features)
+
+    # Attach feature importance if model is loaded
+    feature_importance = {}
+    if predictor.model_loaded and hasattr(predictor.model, 'feature_importances_'):
+        importance_values = predictor.model.feature_importances_
+        for i, name in enumerate(predictor.feature_names):
+            feature_importance[name] = round(float(importance_values[i]) * 100, 1)
+        # Sort by importance descending
+        feature_importance = dict(sorted(feature_importance.items(), key=lambda x: x[1], reverse=True))
 
     return PredictionResponse(
         latitude=request.latitude,
@@ -82,6 +96,15 @@ async def predict_risk(request: PredictionRequest):
         confidence=result['confidence'],
         factors=result['factors'],
         source=result['source'],
+        feature_importance=feature_importance if feature_importance else None,
+        terrain_data={
+            'slope': round(features['slope'], 1),
+            'elevation': round(features['elevation'], 0),
+            'ndvi': round(features['ndvi'], 3),
+            'soil_moisture': round(features['soil_moisture'], 3),
+            'distance_to_road': round(features['distance_to_road'], 0),
+            'source': features.get('_terrain_source', 'unknown'),
+        },
     )
 
 
@@ -125,21 +148,17 @@ async def get_risk_grid(
     lon_max: float = 98.0,
     resolution: int = 20,
 ):
-    """Generate a risk grid across the NER region for heatmap visualization."""
+    """Generate a risk grid across the NER region using real terrain data."""
     lats = pd.Series(pd.linspace(lat_min, lat_max, resolution))
     lons = pd.Series(pd.linspace(lon_min, lon_max, resolution))
 
     grid_points = []
     for lat in lats:
         for lon in lons:
-            features = {
-                'latitude': float(lat),
-                'longitude': float(lon),
-                'slope': 25,
-                'rainfall_24hr': 30,
-                'ndvi': 0.5,
-                'soil_moisture': 0.3,
-            }
+            # Enrich with real terrain data from nearest-neighbor lookup
+            features = terrain_lookup.enrich_features(
+                float(lat), float(lon), {}
+            )
             result = predictor.predict(features)
             grid_points.append({
                 'lat': round(float(lat), 4),
@@ -161,8 +180,7 @@ async def get_risk_grid(
 
 @app.get("/risk/district/{district}")
 async def get_district_risk(district: str):
-    """Get aggregated risk assessment for a district."""
-    # Approximate district centers for NER
+    """Get aggregated risk assessment for a district using real terrain data."""
     district_centers = {
         'guwahati': (26.14, 91.74), 'dibrugarh': (27.47, 94.91),
         'jorhat': (26.75, 94.22), 'tezpur': (26.65, 92.80),
@@ -176,18 +194,14 @@ async def get_district_risk(district: str):
         raise HTTPException(status_code=404, detail=f"District '{district}' not found in database")
 
     lat, lng = center
-    # Generate a mini-grid around the district center
     sample_points = []
     offsets = [-0.15, -0.075, 0, 0.075, 0.15]
     for dlat in offsets:
         for dlng in offsets:
-            features = {
-                'latitude': lat + dlat,
-                'longitude': lng + dlng,
-                'slope': 25 + abs(dlat) * 50,
-                'rainfall_24hr': 40,
-                'ndvi': 0.5,
-            }
+            features = terrain_lookup.enrich_features(
+                lat + dlat, lng + dlng,
+                {'rainfall_24hr': 40}
+            )
             result = predictor.predict(features)
             sample_points.append(result)
 

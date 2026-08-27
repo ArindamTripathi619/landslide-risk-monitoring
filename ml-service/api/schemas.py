@@ -35,6 +35,8 @@ class PredictionResponse(BaseModel):
     confidence: float = Field(..., ge=0, le=1)
     factors: dict
     source: str  # "ml_model" or "rule_based"
+    feature_importance: Optional[dict] = None  # XGBoost feature importance breakdown
+    terrain_data: Optional[dict] = None  # Real terrain values used in prediction
 
 
 class BatchPredictionResponse(BaseModel):
