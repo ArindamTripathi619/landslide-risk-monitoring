@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Box, Typography, Card, CardContent, Button, TextField, MenuItem, Skeleton, Tooltip,
+  Box, Typography, Card, CardContent, Button, TextField, MenuItem, Skeleton, Tooltip, Divider,
 } from '@mui/material';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMapEvents, GeoJSON } from 'react-leaflet';
 import Layout from '../components/Layout';
 import { getRiskZones, getNERRiskGrid, getMLPrediction } from '../services/api';
+import { NER_ROADS, ROAD_STATUS_COLORS, ROAD_STATUS_LABELS } from '../data/nerRoads';
 import 'leaflet/dist/leaflet.css';
 
 const RISK_COLORS: Record<string, string> = {
@@ -27,6 +28,7 @@ const MapPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [showZones, setShowZones] = useState(true);
+  const [showRoads, setShowRoads] = useState(true);
   const [filterLevel, setFilterLevel] = useState('all');
   const [predicting, setPredicting] = useState(false);
 
@@ -99,6 +101,31 @@ const MapPage: React.FC = () => {
               })}
             />
           )}
+
+          {/* Road Connectivity Layer */}
+          {showRoads && NER_ROADS.map((road) => (
+            <Polyline
+              key={road.highway}
+              positions={road.coordinates.map(c => [c[1], c[0]])} // Convert [lng,lat] to [lat,lng]
+              pathOptions={{
+                color: ROAD_STATUS_COLORS[road.status].color,
+                weight: ROAD_STATUS_COLORS[road.status].weight,
+                dashArray: ROAD_STATUS_COLORS[road.status].dashArray,
+                opacity: 0.85,
+              }}
+            >
+              <Popup>
+                <div style={{ fontFamily: 'Inter, sans-serif', minWidth: 180 }}>
+                  <strong>{road.highway}</strong><br />
+                  <span>{road.name}</span><br />
+                  <span style={{ color: ROAD_STATUS_COLORS[road.status].color, fontWeight: 600 }}>
+                    {ROAD_STATUS_LABELS[road.status]}
+                  </span><br />
+                  <span style={{ fontSize: 11, color: '#666' }}>{road.states.join(', ')}</span>
+                </div>
+              </Popup>
+            </Polyline>
+          ))}
         </MapContainer>
 
         {/* Map Controls Sidebar */}
@@ -114,6 +141,11 @@ const MapPage: React.FC = () => {
               onClick={() => setShowZones(!showZones)}
               sx={{ mb: 0.5, fontSize: 11, bgcolor: showZones ? '#1b5e20' : 'transparent', borderColor: '#1b5e20', color: showZones ? 'white' : '#1b5e20' }}>
               Risk Zones
+            </Button>
+            <Button size="small" fullWidth variant={showRoads ? 'contained' : 'outlined'}
+              onClick={() => setShowRoads(!showRoads)}
+              sx={{ mb: 0.5, fontSize: 11, bgcolor: showRoads ? '#1565c0' : 'transparent', borderColor: '#1565c0', color: showRoads ? 'white' : '#1565c0' }}>
+              Roads
             </Button>
           </Box>
           <Typography variant="caption" fontWeight={600} sx={{ mt: 1, display: 'block' }}>FILTER</Typography>
@@ -169,6 +201,14 @@ const MapPage: React.FC = () => {
               <Box key={level} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
                 <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color }} />
                 <Typography variant="caption" sx={{ textTransform: 'capitalize', fontSize: 10 }}>{level.replace('_', ' ')}</Typography>
+              </Box>
+            ))}
+            <Divider sx={{ my: 0.5, borderColor: '#1f2937' }} />
+            <Typography variant="caption" fontWeight={600} display="block" mb={0.5}>Road Status</Typography>
+            {Object.entries(ROAD_STATUS_LABELS).map(([status, label]) => (
+              <Box key={status} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
+                <Box sx={{ width: 16, height: 3, bgcolor: ROAD_STATUS_COLORS[status].color, borderRadius: 1 }} />
+                <Typography variant="caption" sx={{ fontSize: 10 }}>{label}</Typography>
               </Box>
             ))}
           </CardContent>
