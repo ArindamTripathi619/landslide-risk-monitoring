@@ -7,6 +7,8 @@ import Geolocation from 'react-native-geolocation-service';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { submitReport } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import offlineQueue from '../services/offlineQueue';
+import NetInfo from '@react-native-community/netinfo';
 
 const CATEGORIES = [
   { key: 'crack', label: '🔴 Crack Detected', description: 'Visible cracks in ground, walls, or road' },
@@ -34,6 +36,17 @@ const ReportScreen: React.FC = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(1);
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOnline(state.isConnected ?? false);
+    });
+    // Load pending count
+    offlineQueue.getPendingCount().then(setPendingCount);
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     getCurrentLocation();
@@ -82,7 +95,7 @@ const ReportScreen: React.FC = () => {
       const userStr = await AsyncStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : null;
 
-      await submitReport({
+      const reportData = {
         category,
         title,
         description,
@@ -93,9 +106,24 @@ const ReportScreen: React.FC = () => {
         },
         photos,
         district: user?.district || 'Unknown',
-      });
+      };
 
-      RNAlert.alert('✅ Report Submitted', 'Your field report has been submitted successfully.');
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        // Online: submit directly
+        await submitReport(reportData);
+        RNAlert.alert('✅ Report Submitted', 'Your field report has been submitted successfully.');
+      } else {
+        // Offline: queue for later sync
+        await offlineQueue.enqueue(reportData);
+        const newCount = await offlineQueue.getPendingCount();
+        setPendingCount(newCount);
+        RNAlert.alert(
+          '📤 Saved Offline',
+          `Report saved locally. It will sync automatically when you're back online.\n\n${newCount} report(s) pending sync.`
+        );
+      }
+
       // Reset form
       setCategory('');
       setTitle('');
@@ -114,6 +142,36 @@ const ReportScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       <Text style={styles.header}>📝 Field Report</Text>
       <Text style={styles.subheader}>Report ground conditions, cracks, or hazards</Text>
+
+      {/* Network Status */}
+      {!isOnline && (
+        <View style={styles.offlineBar}>
+          <Text style={styles.offlineText}>📴 Offline Mode — Reports will sync when online</Text>
+          {pendingCount > 0 && (
+            <TouchableOpacity onPress={async () => {
+              const result = await offlineQueue.syncAll();
+              const newCount = await offlineQueue.getPendingCount();
+              setPendingCount(newCount);
+              RNAlert.alert('Sync Complete', `Synced: ${result.synced}, Failed: ${result.failed}`);
+            }}>
+              <Text style={styles.syncBtn}>🔄 Sync Now</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      {isOnline && pendingCount > 0 && (
+        <View style={styles.syncBar}>
+          <Text style={styles.syncText}>📤 {pendingCount} report(s) pending sync</Text>
+          <TouchableOpacity onPress={async () => {
+            const result = await offlineQueue.syncAll();
+            const newCount = await offlineQueue.getPendingCount();
+            setPendingCount(newCount);
+            RNAlert.alert('Sync Complete', `Synced: ${result.synced}, Failed: ${result.failed}`);
+          }}>
+            <Text style={styles.syncBtn}>🔄 Sync</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Location */}
       <View style={styles.locationBar}>
@@ -216,6 +274,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0e17', padding: 16 },
   header: { fontSize: 24, fontWeight: '700', color: '#ff6f00' },
   subheader: { fontSize: 14, color: '#9ca3af', marginBottom: 16 },
+  offlineBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#7f1d1d', padding: 12, borderRadius: 8, marginBottom: 12 },
+  offlineText: { color: '#fca5a5', fontSize: 13, flex: 1 },
+  syncBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1f2937', padding: 12, borderRadius: 8, marginBottom: 12 },
+  syncText: { color: '#d1d5db', fontSize: 13, flex: 1 },
+  syncBtn: { color: '#ff6f00', fontSize: 13, fontWeight: '600' },
   locationBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827', padding: 12, borderRadius: 8, marginBottom: 16 },
   locationText: { color: '#d1d5db', fontSize: 13 },
   refreshBtn: { backgroundColor: '#1f2937', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },

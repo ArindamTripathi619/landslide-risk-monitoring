@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Divider,
-  Typography, IconButton, AppBar, Toolbar, useMediaQuery, useTheme,
+  Typography, IconButton, AppBar, Toolbar, useMediaQuery, useTheme, Badge,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -32,6 +32,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeAlerts, setActiveAlerts] = useState(0);
+  const [pendingReports, setPendingReports] = useState(0);
+
+  useEffect(() => {
+    // Fetch badge counts
+    const fetchCounts = async () => {
+      try {
+        const token = localStorage.getItem('lrn_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const [alertsRes, reportsRes] = await Promise.allSettled([
+          fetch('http://localhost:5000/api/alerts/active', { headers }),
+          fetch('http://localhost:5000/api/field-reports?status=pending', { headers }),
+        ]);
+        if (alertsRes.status === 'fulfilled') {
+          const data = await alertsRes.value.json();
+          setActiveAlerts(data.alerts?.length || 0);
+        }
+        if (reportsRes.status === 'fulfilled') {
+          const data = await reportsRes.value.json();
+          setPendingReports(data.reports?.length || 0);
+        }
+      } catch (e) { console.error(e); }
+    };
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('lrn_token');
@@ -57,7 +84,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             bgcolor: location.pathname === item.path ? '#1f2937' : 'transparent',
             '&:hover': { bgcolor: '#1f2937' },
           }}>
-            <ListItemIcon sx={{ color: '#9ca3af', minWidth: 36 }}>{item.icon}</ListItemIcon>
+            <ListItemIcon sx={{ color: '#9ca3af', minWidth: 36 }}>
+              <Badge
+                badgeContent={item.path === '/alerts' ? activeAlerts : item.path === '/reports' ? pendingReports : 0}
+                color="error"
+                max={99}
+                sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 18, minWidth: 18 } }}
+              >
+                {item.icon}
+              </Badge>
+            </ListItemIcon>
             <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 14, color: '#d1d5db' }} />
           </ListItem>
         ))}

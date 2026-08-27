@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { auth, requireRole, generateToken } = require('../middleware/auth');
+const { validateRegister, validateLogin } = require('../middleware/validation');
 
-// Register
-router.post('/register', async (req, res) => {
+// Register with validation
+router.post('/register', validateRegister, async (req, res) => {
   try {
     const { name, email, password, role, phone, district, state, village, language } = req.body;
 
@@ -45,8 +46,8 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
-router.post('/login', async (req, res) => {
+// Login with validation
+router.post('/login', validateLogin, async (req, res) => {
   try {
     const { email, password } = req.body;
 

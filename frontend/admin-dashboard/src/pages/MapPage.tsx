@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Box, Typography, Card, CardContent, Button, TextField, MenuItem, Skeleton,
+  Box, Typography, Card, CardContent, Button, TextField, MenuItem, Skeleton, Tooltip,
 } from '@mui/material';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents, GeoJSON } from 'react-leaflet';
 import Layout from '../components/Layout';
@@ -126,6 +126,38 @@ const MapPage: React.FC = () => {
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
             {filteredGrid.length} points • Click map to predict
           </Typography>
+          
+          {/* Export Buttons */}
+          <Box sx={{ mt: 1, display: 'flex', gap: 0.5 }}>
+            <Tooltip title="Export as GeoJSON">
+              <Button size="small" variant="outlined" onClick={() => {
+                const geojson = {
+                  type: 'FeatureCollection',
+                  features: filteredGrid.map(p => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+                    properties: { risk_level: p.risk_level, risk_score: p.risk_score, district: p.district },
+                  })),
+                };
+                const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'risk_grid.geojson'; a.click();
+                URL.revokeObjectURL(url);
+              }} sx={{ fontSize: 10, flex: 1 }}>GeoJSON</Button>
+            </Tooltip>
+            <Tooltip title="Export as CSV">
+              <Button size="small" variant="outlined" onClick={() => {
+                const headers = 'lat,lng,risk_level,risk_score,district\n';
+                const rows = filteredGrid.map(p => `${p.lat},${p.lng},${p.risk_level},${p.risk_score?.toFixed(1)},${p.district || ''}`).join('\n');
+                const blob = new Blob([headers + rows], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'risk_grid.csv'; a.click();
+                URL.revokeObjectURL(url);
+              }} sx={{ fontSize: 10, flex: 1 }}>CSV</Button>
+            </Tooltip>
+          </Box>
         </Card>
 
         {/* Legend */}

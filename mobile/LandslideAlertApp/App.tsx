@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import AlertsScreen from './src/screens/AlertsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import socketService from './src/services/socketService';
 import { Text } from 'react-native';
@@ -36,6 +37,10 @@ function MainTabs() {
       <Tab.Screen name="Alerts" component={AlertsScreen} options={{
         tabBarLabel: 'Alerts',
         tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🚨</Text>,
+      }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{
+        tabBarLabel: 'Profile',
+        tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👤</Text>,
       }} />
     </Tab.Navigator>
   );

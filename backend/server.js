@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const riskRoutes = require('./routes/riskZones');
 const alertRoutes = require('./routes/alerts');
 const SocketHandler = require('./socket/socketHandler');
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,6 +32,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Rate limiting
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter);
 
 // API Routes
 app.use('/api/auth', authRoutes);

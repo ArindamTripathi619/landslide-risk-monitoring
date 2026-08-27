@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Card, CardContent, Chip, Button, Grid, TextField, MenuItem,
-  Dialog, DialogTitle, DialogContent, DialogActions, Skeleton, Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions, Skeleton, Alert, ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import { Warning as WarningIcon } from '@mui/icons-material';
 import Layout from '../components/Layout';
@@ -16,6 +16,7 @@ const AlertsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: '', severity: '' });
   const [showNew, setShowNew] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'timeline'>('cards');
   const [newAlert, setNewAlert] = useState({
     type: 'landslide_warning', severity: 'high', title: '', message: '', district: '',
   });
@@ -54,7 +55,7 @@ const AlertsPage: React.FC = () => {
           </Button>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
           <TextField select size="small" label="Status" value={filter.status}
             onChange={e => setFilter(f => ({ ...f, status: e.target.value }))} sx={{ minWidth: 140 }}>
             <MenuItem value="">All</MenuItem>
@@ -65,11 +66,17 @@ const AlertsPage: React.FC = () => {
             <MenuItem value="">All</MenuItem>
             {['low', 'moderate', 'high', 'critical'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </TextField>
+          <Box sx={{ ml: 'auto' }}>
+            <ToggleButtonGroup value={viewMode} exclusive onChange={(_, v) => v && setViewMode(v)} size="small">
+              <ToggleButton value="cards">Cards</ToggleButton>
+              <ToggleButton value="timeline">Timeline</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
         </Box>
 
-        <Grid container spacing={2}>
-          {loading ? (
-            [1, 2, 3, 4].map(i => (
+        {loading ? (
+          <Grid container spacing={2}>
+            {[1, 2, 3, 4].map(i => (
               <Grid item xs={12} md={6} key={i}>
                 <Card sx={{ bgcolor: '#111827', border: '1px solid #1f2937' }}>
                   <CardContent>
@@ -79,34 +86,69 @@ const AlertsPage: React.FC = () => {
                   </CardContent>
                 </Card>
               </Grid>
-            ))
-          ) : alerts.map(alert => (
-            <Grid item xs={12} md={6} key={alert._id}>
-              <Card sx={{ bgcolor: '#111827', border: `1px solid ${RISK_COLORS[alert.severity] || '#1f2937'}` }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="h6" fontWeight={600}>{alert.title}</Typography>
-                    <Chip label={alert.status} size="small" sx={{ textTransform: 'capitalize' }} />
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{alert.message}</Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-                    <Chip label={alert.severity} size="small" sx={{ bgcolor: RISK_COLORS[alert.severity], color: 'white', textTransform: 'capitalize' }} />
-                    <Chip label={alert.type?.replace('_', ' ')} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
-                    <Chip label={alert.district} size="small" variant="outlined" />
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Issued: {new Date(alert.issuedAt).toLocaleString()}
-                    </Typography>
-                    {alert.status === 'active' && (
-                      <Button size="small" color="success" onClick={() => handleResolve(alert._id)}>Resolve</Button>
-                    )}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+            ))}
+          </Grid>
+        ) : viewMode === 'cards' ? (
+          <Grid container spacing={2}>
+            {alerts.map(alert => (
+              <Grid item xs={12} md={6} key={alert._id}>
+                <Card sx={{ bgcolor: '#111827', border: `1px solid ${RISK_COLORS[alert.severity] || '#1f2937'}` }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="h6" fontWeight={600}>{alert.title}</Typography>
+                      <Chip label={alert.status} size="small" sx={{ textTransform: 'capitalize' }} />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{alert.message}</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                      <Chip label={alert.severity} size="small" sx={{ bgcolor: RISK_COLORS[alert.severity], color: 'white', textTransform: 'capitalize' }} />
+                      <Chip label={alert.type?.replace('_', ' ')} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
+                      <Chip label={alert.district} size="small" variant="outlined" />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Issued: {new Date(alert.issuedAt).toLocaleString()}
+                      </Typography>
+                      {alert.status === 'active' && (
+                        <Button size="small" color="success" onClick={() => handleResolve(alert._id)}>Resolve</Button>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          /* Timeline View */
+          <Box sx={{ position: 'relative', pl: 4 }}>
+            <Box sx={{ position: 'absolute', left: 15, top: 0, bottom: 0, width: 2, bgcolor: '#1f2937' }} />
+            {alerts.sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime()).map((alert) => (
+              <Box key={alert._id} sx={{ position: 'relative', mb: 3 }}>
+                <Box sx={{
+                  position: 'absolute', left: -25, top: 8, width: 12, height: 12, borderRadius: '50%',
+                  bgcolor: RISK_COLORS[alert.severity] || '#666', border: '2px solid #0a0e17', zIndex: 1,
+                }} />
+                <Card sx={{ bgcolor: '#111827', border: `1px solid ${RISK_COLORS[alert.severity] || '#1f2937'}` }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>{alert.title}</Typography>
+                      <Chip label={alert.status} size="small" sx={{ textTransform: 'capitalize' }} />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{alert.message}</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <Chip label={alert.severity} size="small" sx={{ bgcolor: RISK_COLORS[alert.severity], color: 'white', textTransform: 'capitalize' }} />
+                      <Chip label={alert.district} size="small" variant="outlined" />
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                        {new Date(alert.issuedAt).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+
 
         {!loading && alerts.length === 0 && (
           <Box sx={{ textAlign: 'center', mt: 8, color: 'text.secondary' }}>

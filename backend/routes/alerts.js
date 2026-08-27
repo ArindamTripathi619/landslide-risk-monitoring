@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Alert = require('../models/Alert');
 const { auth, requireRole } = require('../middleware/auth');
+const { validateAlert } = require('../middleware/validation');
+const { alertLimiter } = require('../middleware/rateLimiter');
 
 // GET /api/alerts — list alerts
 router.get('/', auth, async (req, res) => {
@@ -24,8 +26,8 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// POST /api/alerts — issue new alert (admin/field_officer)
-router.post('/', auth, requireRole('admin', 'district_admin', 'field_officer'), async (req, res) => {
+// POST /api/alerts — issue new alert with validation and rate limiting
+router.post('/', auth, requireRole('admin', 'district_admin', 'field_officer'), alertLimiter, validateAlert, async (req, res) => {
   try {
     const alert = await Alert.create({
       ...req.body,
