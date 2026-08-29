@@ -33,18 +33,54 @@ fi
 
 case "$1" in
     --docker|-d)
-        echo -e "\n${BLUE}🐳 Starting with Docker Compose...${NC}"
-        docker compose up --build -d
-        echo -e "\n${GREEN}All services running:${NC}"
-        echo "  📊 Dashboard:  http://localhost:3000"
-        echo "  🔌 API:        http://localhost:5000"
-        echo "  🧠 ML Service: http://localhost:8000"
-        echo "  🗄️  MongoDB:    localhost:27017"
-        echo ""
-        echo -e "${YELLOW}To seed the database:${NC}"
-        echo "  docker exec landslide-backend node scripts/seed.js"
-        echo -e "${YELLOW}To view logs:${NC}"
-        echo "  docker compose logs -f"
+        if [ "$MODE" = "local" ]; then
+            echo -e "\n${RED}❌ Docker is not installed. Falling back to local mode.${NC}"
+            echo -e "${YELLOW}Install Docker: https://docs.docker.com/get-docker/${NC}"
+            echo -e "${BLUE}Starting in local mode instead...${NC}\n"
+            # Fall through to local start (same as default case)
+            cd ml-service
+            if [ ! -d "venv" ]; then
+                python -m venv venv
+                source venv/bin/activate
+                pip install -r requirements.txt > /dev/null 2>&1
+            else
+                source venv/bin/activate
+            fi
+            uvicorn api.main:app --host 0.0.0.0 --port 8001 &
+            ML_PID=$!
+            cd ..
+
+            cd backend
+            if [ ! -f ".env" ]; then cp .env.example .env; fi
+            node server.js &
+            API_PID=$!
+            cd ..
+
+            cd frontend/admin-dashboard
+            npm start &
+            FE_PID=$!
+            cd ../..
+
+            echo -e "\n${GREEN}All services started (local mode)! 🚀${NC}"
+            echo "  📊 Dashboard:  http://localhost:3000"
+            echo "  🔌 API:        http://localhost:5000/api/health"
+            echo "  🧠 ML Service: http://localhost:8001/docs"
+            echo "  🗄️  MongoDB:    localhost:27017"
+            wait
+        else
+            echo -e "\n${BLUE}🐳 Starting with Docker Compose...${NC}"
+            docker compose up --build -d
+            echo -e "\n${GREEN}All services running:${NC}"
+            echo "  📊 Dashboard:  http://localhost:3000"
+            echo "  🔌 API:        http://localhost:5000"
+            echo "  🧠 ML Service: http://localhost:8001"
+            echo "  🗄️  MongoDB:    localhost:27017"
+            echo ""
+            echo -e "${YELLOW}To seed the database:${NC}"
+            echo "  docker exec landslide-backend node scripts/seed.js"
+            echo -e "${YELLOW}To view logs:${NC}"
+            echo "  docker compose logs -f"
+        fi
         ;;
 
     --seed|-s)
@@ -69,13 +105,23 @@ case "$1" in
         ;;
 
     --stop)
-        echo -e "\n${RED}🛑 Stopping all services...${NC}"
-        docker compose down
+        if [ "$MODE" = "local" ]; then
+            echo -e "\n${RED}❌ Docker not found. Killing local processes instead...${NC}"
+            pkill -f "uvicorn api.main:app" 2>/dev/null && echo "  🧠 ML service stopped" || true
+            pkill -f "node server.js" 2>/dev/null && echo "  🔌 Backend stopped" || true
+            pkill -f "react-scripts start" 2>/dev/null && echo "  📊 Frontend stopped" || true
+            echo -e "${GREEN}Done!${NC}"
+        else
+            echo -e "\n${RED}🛑 Stopping all services...${NC}"
+            docker compose down
+        fi
         ;;
 
     --clean)
         echo -e "\n${RED}🧹 Cleaning up...${NC}"
-        docker compose down -v
+        if [ "$MODE" != "local" ]; then
+            docker compose down -v 2>/dev/null || true
+        fi
         rm -rf backend/node_modules ml-service/__pycache__ frontend/admin-dashboard/node_modules
         echo -e "${GREEN}Cleaned!${NC}"
         ;;
@@ -104,7 +150,7 @@ case "$1" in
             else
                 source venv/bin/activate
             fi
-            uvicorn api.main:app --host 0.0.0.0 --port 8000 &
+            uvicorn api.main:app --host 0.0.0.0 --port 8001 &
             ML_PID=$!
             cd ..
 
@@ -138,7 +184,7 @@ case "$1" in
             echo ""
             echo "  📊 Dashboard:  http://localhost:3000"
             echo "  🔌 API:        http://localhost:5000/api/health"
-            echo "  🧠 ML Service: http://localhost:8000/docs"
+            echo "  🧠 ML Service: http://localhost:8001/docs"
             echo ""
             echo -e "${YELLOW}To seed database:${NC}"
             echo "  cd backend && node scripts/seed.js"

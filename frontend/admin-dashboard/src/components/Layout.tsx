@@ -40,7 +40,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const fetchCounts = async () => {
       try {
         const token = localStorage.getItem('lrn_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
         const [alertsRes, reportsRes] = await Promise.allSettled([
           fetch('http://localhost:5000/api/alerts/active', { headers }),
           fetch('http://localhost:5000/api/field-reports?status=pending', { headers }),

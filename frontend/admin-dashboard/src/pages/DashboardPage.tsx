@@ -225,6 +225,7 @@ const DashboardPage: React.FC = () => {
                   Simulate Rainfall Spike
                 </Button>
               </Tooltip>
+            </Box>
           </CardContent>
         </Card>
 
@@ -374,7 +375,6 @@ const DashboardPage: React.FC = () => {
           </Grid>
         </Grid>
       </Box>
-    </Layout>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
