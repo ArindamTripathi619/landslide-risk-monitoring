@@ -45,7 +45,7 @@ services:
       dockerfile: Dockerfile
     container_name: landslide-ml-service
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./ml-service/models:/app/models
       - ./ml-service/data:/app/data
@@ -60,7 +60,7 @@ services:
       - "3000:3000"
     environment:
       REACT_APP_API_URL: http://localhost:5000
-      REACT_APP_ML_SERVICE_URL: http://localhost:8000
+      REACT_APP_ML_SERVICE_URL: http://localhost:8001
     depends_on:
       - backend
 

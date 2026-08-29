@@ -262,19 +262,22 @@ const MapPage: React.FC = () => {
                   {selectedPoint.feature_importance && Object.keys(selectedPoint.feature_importance).length > 0 && (
                     <Box sx={{ mt: 1.5, p: 1, bgcolor: '#1f2937', borderRadius: 1 }}>
                       <Typography variant="caption" fontWeight={600} color="text.secondary">WHY THIS SCORE?</Typography>
-                      {Object.entries(selectedPoint.feature_importance).slice(0, 6).map(([feature, importance]) => (
+                      {Object.entries(selectedPoint.feature_importance).slice(0, 6).map(([feature, importance]) => {
+                        const imp = Number(importance);
+                        return (
                         <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                           <Typography variant="caption" color="text.secondary" sx={{ minWidth: 100, textTransform: 'capitalize' }}>
                             {feature.replace('_', ' ')}
                           </Typography>
                           <Box sx={{ flex: 1, bgcolor: '#0a0e17', borderRadius: 1, height: 8 }}>
-                            <Box sx={{ width: `${importance}%`, bgcolor: '#ff6f00', borderRadius: 1, height: 8, transition: 'width 0.5s' }} />
+                            <Box sx={{ width: `${imp}%`, bgcolor: '#ff6f00', borderRadius: 1, height: 8, transition: 'width 0.5s' }} />
                           </Box>
                           <Typography variant="caption" color="#ff6f00" sx={{ minWidth: 35, textAlign: 'right' }}>
-                            {importance}%
+                            {String(imp)}%
                           </Typography>
                         </Box>
-                      ))}
+                        );
+                      })}
                     </Box>
                   )}
                 </>
